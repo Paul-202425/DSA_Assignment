@@ -1,0 +1,69 @@
+/* Question 4: IoT Gateway Connectivity Analyzer - BFS with a queue */
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+#define V 7
+
+static int g[V][V];   /* adjacency matrix, 0 = no link, otherwise transfer time in ms */
+
+static void add_link(char a, char b, int w) { g[a - 'A'][b - 'A'] = w; g[b - 'A'][a - 'A'] = w; }
+
+int main(void) {
+    add_link('A','B',6);  add_link('A','D',12); add_link('B','D',5);  add_link('B','C',11);
+    add_link('C','D',17); add_link('C','G',25); add_link('D','E',22); add_link('D','F',15);
+    add_link('E','F',10); add_link('F','G',22);
+
+    char buf[64];
+    printf("Enter starting gateway: ");
+    if (scanf("%63s", buf) != 1) { printf("No input received.\n"); return 1; }
+
+    /* Task 1: validate */
+    if (strlen(buf) != 1 || !isalpha((unsigned char)buf[0]) ||
+        toupper((unsigned char)buf[0]) - 'A' >= V) {
+        printf("Invalid gateway '%s'. Valid gateways are A to G.\n", buf);
+        return 1;
+    }
+    int start = toupper((unsigned char)buf[0]) - 'A';
+
+    /* Task 2: BFS using a queue */
+    int queue[V], head = 0, tail = 0;
+    int visited[V] = {0}, dist[V];
+    int order[V], ocount = 0;
+    for (int i = 0; i < V; i++) dist[i] = -1;
+
+    visited[start] = 1; dist[start] = 0; queue[tail++] = start;
+    while (head < tail) {
+        int u = queue[head++];
+        order[ocount++] = u;
+        for (int v = 0; v < V; v++) {
+            if (g[u][v] && !visited[v]) {
+                visited[v] = 1; dist[v] = dist[u] + 1; queue[tail++] = v;
+            }
+        }
+    }
+
+    printf("\nFull BFS visiting order from %c: ", 'A' + start);
+    for (int i = 0; i < ocount; i++) printf("%c%s", 'A' + order[i], i + 1 < ocount ? " -> " : "\n");
+
+    printf("\nGateways directly connected (one hop) to %c, in BFS discovery order:\n", 'A' + start);
+    int found = 0;
+    for (int i = 0; i < ocount; i++) {
+        if (dist[order[i]] == 1) {
+            printf("  %c  (link time %d ms)\n", 'A' + order[i], g[start][order[i]]);
+            found++;
+        }
+    }
+    if (!found) { printf("  none\n"); return 0; }
+
+    /* Task 3: highest transfer time among one-hop neighbours */
+    int best = 0;
+    for (int i = 0; i < ocount; i++)
+        if (dist[order[i]] == 1 && g[start][order[i]] > best) best = g[start][order[i]];
+
+    printf("\nHighest data-transfer time among direct neighbours: %d ms\n", best);
+    for (int i = 0; i < ocount; i++)
+        if (dist[order[i]] == 1 && g[start][order[i]] == best)
+            printf("  Gateway %c  (%c - %c : %d ms)\n", 'A' + order[i], 'A' + start, 'A' + order[i], best);
+    return 0;
+}
